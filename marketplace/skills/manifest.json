@@ -1,0 +1,8 @@
+{
+  "python_expert": { "price": 10, "decay_speed": 0.1, "description": "Expert Python programming knowledge" },
+  "humanizer": { "price": 15, "decay_speed": 0.2, "description": "Reduce AI-sounding patterns in text" },
+  "code-simplification": { "price": 18, "decay_speed": 0.15, "description": "Simplify and de-complicate code" },
+  "explain-codebase": { "price": 18, "decay_speed": 0.15, "description": "Explain an unfamiliar codebase" },
+  "pr-message": { "price": 10, "decay_speed": 0.3, "description": "Write concise high-signal PR messages" },
+  "git-guardian": { "price": 15, "decay_speed": 0.2, "description": "Guard against destructive git mistakes" }
+}

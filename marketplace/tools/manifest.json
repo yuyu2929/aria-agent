@@ -1,0 +1,47 @@
+{
+  "get_time": {
+    "price": 5, "decay_speed": 0.3, "max_repairs": 5, "repair_price": 4,
+    "usage_tokens_est": 20,
+    "description": "Return the current UTC time"
+  },
+  "calculator": {
+    "price": 10, "decay_speed": 0.2, "max_repairs": 5, "repair_price": 4,
+    "usage_tokens_est": 60,
+    "description": "Evaluate a math expression safely"
+  },
+  "read_file": {
+    "price": 12, "decay_speed": 0.5, "max_repairs": 4, "repair_price": 5,
+    "usage_tokens_est": 120,
+    "description": "Read a numbered slice of a file"
+  },
+  "write_file": {
+    "price": 15, "decay_speed": 0.6, "max_repairs": 3, "repair_price": 6,
+    "usage_tokens_est": 120,
+    "description": "Write content to a file and echo it"
+  },
+  "edit_file": {
+    "price": 20, "decay_speed": 0.8, "max_repairs": 2, "repair_price": 8,
+    "usage_tokens_est": 200,
+    "description": "Apply text replacements and print a diff"
+  },
+  "search_wikipedia": {
+    "price": 20, "decay_speed": 1.0, "max_repairs": 1, "repair_price": 10,
+    "usage_tokens_est": 400,
+    "description": "Summarize Wikipedia pages for a query"
+  },
+  "web_fetch": {
+    "price": 22, "decay_speed": 0.7, "max_repairs": 2, "repair_price": 8,
+    "usage_tokens_est": 600,
+    "description": "Fetch a URL and extract its content"
+  },
+  "web_search": {
+    "price": 25, "decay_speed": 0.9, "max_repairs": 2, "repair_price": 10,
+    "usage_tokens_est": 900,
+    "description": "Search the web and return ranked excerpts"
+  },
+  "bash": {
+    "price": 25, "decay_speed": 1.0, "max_repairs": 1, "repair_price": 10,
+    "usage_tokens_est": 300,
+    "description": "Execute a shell command without a shell"
+  }
+}

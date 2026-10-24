@@ -1,0 +1,38 @@
+# Aria 经济系统配置
+# 所有经济参数集中在此，代码中不出现魔法数字。
+
+economy:
+  # 影子定价：多少真实 token 折算 1 个 Aria coin
+  # 虚拟价格锚定真实 LLM 成本——省虚拟币 = 省真钱
+  tokens_per_credit: 500
+  # 使用费加成（1.0 = 按影子原价收）
+  usage_margin: 1.0
+  # Agent 初始余额
+  starting_balance: 0
+  # 闲聊模式的每轮津贴（0 = 收入只来自任务赏金，经济闭环更强）
+  allowance_per_turn: 0
+  # 工具磨损公式缩放
+  wear_scale: 10.0
+  # 技能“保鲜期”：多少小时内再次使用可恢复
+  freshness_hours: 4.0
+  # 保鲜期内每次使用恢复的段数
+  skill_regain_lines: 5
+  # 赠送工具获得小费的上限（0-10 随机）
+  giveaway_tip_max: 10
+  # 单次会话最大 agent 步数
+  max_steps: 8
+
+tools:
+  # 价格信号：对指定工具的购买价/使用费施加倍率（实验用）
+  # 例：web_search: 1.5 表示 web_search 贵 50%
+  price_signals: {}
+
+experiments:
+  default_budgets: [20, 50, 100, 200]
+  default_signals: [{}, {web_search: 2.0}]
+  runs_per_cell: 3
+  seed: 42
+
+paths:
+  data_dir: artifacts        # sqlite 数据库与运行时状态
+  marketplace_dir: marketplace

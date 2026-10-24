@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.artifacts/
+artifacts/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+.DS_Store
+
+# 许可证私钥：泄露即可伪造企业许可证，绝不能提交
+keys/aria-license-private.pem
+keys/demo-license.txt
+
+# 企业扩展包示例实现：仅本地联调用，正式发布前请移入私有仓库
+examples/enterprise_plugin/

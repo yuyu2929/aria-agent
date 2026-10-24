@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aria — Agent Economy Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --border: #262b36; --text: #e6e9ef;
+    --dim: #8b93a3; --accent: #5b8cff; --good: #3ecf8e; --bad: #ff6b6b; --warn: #f5b84b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Segoe UI", "PingFang SC", sans-serif; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 18px; }
+  header .balance { font-size: 22px; font-weight: 700; color: var(--good); }
+  header .dim { color: var(--dim); font-size: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px 20px; max-width: 1400px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-bottom: 10px; }
+  .wide { grid-column: 1 / -1; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; min-width: 90px; }
+  .bar > div { height: 100%; background: var(--accent); }
+  .feed { max-height: 260px; overflow-y: auto; font-size: 12.5px; }
+  .feed .ev { padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+  .feed .t { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .tag { padding: 0 6px; border-radius: 4px; font-size: 11px; flex-shrink: 0; height: 18px; line-height: 18px; }
+  .tag.decline, .tag.broken, .tag.failed { background: rgba(255,107,107,.15); color: var(--bad); }
+  .tag.used, .tag.completed, .tag.payout { background: rgba(62,207,142,.15); color: var(--good); }
+  .tag.bought, .tag.repaired, .tag.accepted { background: rgba(91,140,255,.15); color: var(--accent); }
+  .tag.warn, .tag.decayed, .tag.forgotten { background: rgba(245,184,75,.15); color: var(--warn); }
+  .chat { display: flex; gap: 8px; margin-top: 10px; }
+  .chat input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; }
+  button { background: var(--accent); border: 0; color: #fff; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--dim); }
+  .reply { margin-top: 10px; padding: 10px; background: var(--bg); border-radius: 6px; white-space: pre-wrap; font-size: 13px; min-height: 20px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row input[type=number] { width: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .kpi { background: var(--bg); border-radius: 8px; padding: 10px; }
+  .kpi .v { font-size: 20px; font-weight: 700; } .kpi .k { font-size: 11px; color: var(--dim); }
+  svg text { fill: var(--dim); font-size: 10px; }
+  .pill { font-size: 11px; color: var(--dim); }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪙 Aria</h1>
+  <span class="balance" id="balance">–</span>
+  <span class="dim">Aria coins · 虚拟货币，锚定真实 token 成本（影子定价）</span>
+  <span class="pill" id="clock"></span>
+  <span class="pill" id="tier-badge" style="margin-left:auto"></span>
+</header>
+
+<div class="grid">
+  <section class="panel wide">
+    <h2>净资产曲线（复式账本实时推导）</h2>
+    <svg id="chart" width="100%" height="180" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
+  </section>
+
+  <section class="panel">
+    <h2>行为指标</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="panel">
+    <h2>工具健康度（磨损 / 修复 / 租用）</h2>
+    <table id="tools"><thead><tr><th>工具</th><th>状态</th><th>Life</th><th>调用</th><th>可修</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="panel">
+    <h2>决策日志（行为研究数据源）</h2>
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <section class="panel">
+    <h2>账本流水（复式记账）</h2>
+    <table id="ledger"><thead><tr><th>时间</th><th>类型</th><th>借方→贷方</th><th class="num">金额</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="panel">
+    <h2>任务板（收入端）</h2>
+    <div class="row">
+      <input id="t-bounty" type="number" placeholder="赏金" value="30" style="width:70px">
+      <input id="t-title" placeholder="标题" style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px;">
+      <button onclick="postTask()">发任务</button>
+    </div>
+    <table id="tasks" style="margin-top:10px"><thead><tr><th>ID</th><th>标题</th><th class="num">赏金</th><th>状态</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="panel">
+    <h2>与 LivingAI 对话（"赏金 30: ..." 直接发任务）</h2>
+    <div class="chat">
+      <input id="msg" placeholder="说点什么，或：赏金 50: 帮我查一下月亮的三个事实" onkeydown="if(event.key==='Enter')send()">
+      <button onclick="send()">发送</button>
+    </div>
+    <div class="reply" id="reply">（演示模式：未配置 ARIA_API_KEY 时使用脚本驱动；配置后即可对话）</div>
+  </section>
+
+  <section class="panel wide">
+    <h2>授权：开源核心（MIT，永久免费）· 企业版扩展（付费）</h2>
+    <div id="license"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>行为实验：预算扫掠 × 价格扰动</h2>
+    <div class="row">
+      <span class="pill">预算档位：</span><input id="exp-budgets" value="20, 50, 100, 200" style="width:180px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px;">
+      <span class="pill">每格运行：</span><input id="exp-runs" type="number" value="2" style="width:60px; background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px;">
+      <button onclick="runExperiment()">运行扫掠</button>
+    </div>
+    <div class="reply" id="exp-out">实验输出预算敏感度斜率与预算焦虑指数——见 README「实验框架」。</div>
+  </section>
+</div>
+
+<script>
+const fmt = n => (n < 0 ? "-" : "") + Math.abs(n).toLocaleString();
+const tagClass = t => ({
+  tool_declined_price: "decline", tool_broken: "broken", task_failed: "failed",
+  tool_used: "used", task_completed: "completed", task_payout: "payout",
+  tool_bought: "bought", tool_repaired: "repaired", task_accepted: "accepted",
+  skill_decayed: "decayed", skill_forgotten: "forgotten", task_posted: "warn",
+}[t] || "");
+
+async function refresh() {
+  const st = await (await fetch("/api/status")).json();
+  document.getElementById("balance").textContent = fmt(st.balance);
+  document.getElementById("balance").className = "balance " + (st.balance < 0 ? "neg" : "pos");
+  // 曲线
+  const svg = document.getElementById("chart");
+  const pts = st.series || [];
+  if (pts.length > 1) {
+    const W = 800, H = 180, P = 24;
+    const xs = pts.map((_, i) => P + i * (W - 2 * P) / (pts.length - 1));
+    const vals = pts.map(p => p.balance);
+    const lo = Math.min(...vals, 0), hi = Math.max(...vals, 1);
+    const y = v => H - P - (v - lo) / (hi - lo || 1) * (H - 2 * P);
+    svg.innerHTML =
+      `<line x1="${P}" y1="${y(0)}" x2="${W-P}" y2="${y(0)}" stroke="#262b36"/>` +
+      `<path d="M${xs.map((x,i)=>x+","+y(vals[i])).join(" L")}" fill="none" stroke="#5b8cff" stroke-width="2"/>` +
+      `<text x="${P}" y="${y(hi)-4}">${fmt(hi)}</text><text x="${P}" y="${y(lo)+12}">${fmt(lo)}</text>`;
+  }
+  // 工具
+  const tb = document.querySelector("#tools tbody");
+  tb.innerHTML = Object.entries(st.tools).filter(([,h]) => h.owned || h.calls)
+    .map(([n,h]) => `<tr><td>${n}</td><td>${h.owned ? (h.broken ? "🔴损坏" : "✓") : "·"}</td>
+      <td><div class="bar"><div style="width:${h.life ?? 0}%"></div></div></td>
+      <td class="num">${h.calls}</td><td class="num">${h.repairs_left}</td></tr>`).join("") || "<tr><td colspan=5 class=dim>暂无工具</td></tr>";
+  // 决策流
+  document.getElementById("feed").innerHTML = st.events.map(e =>
+    `<div class="ev"><span class="t">${e.ts.slice(11,19)}</span><span class="tag ${tagClass(e.type)}">${e.type}</span>
+     <span>${e.ref ? e.ref.slice(0,8) : ""} ${e.payload && e.payload.reason ? "· " + e.payload.reason : ""}${e.payload && e.payload.price ? " · " + e.payload.price + "c" : ""}</span></div>`).join("");
+  // 流水
+  const lg = await (await fetch("/api/ledger?limit=40")).json();
+  document.querySelector("#ledger tbody").innerHTML = lg.map(e =>
+    `<tr><td>${e.ts.slice(11,19)}</td><td>${e.kind}</td><td>${e.debit} → ${e.credit}</td>
+     <td class="num ${e.credit==="agent"?"pos":"neg"}">${e.credit==="agent"?"+":""}${fmt(e.amount)}</td></tr>`).join("");
+  // 指标
+  const m = await (await fetch("/api/metrics")).json;
+  document.getElementById("kpis").innerHTML = [
+    ["储蓄率", (m.savings_rate*100).toFixed(0)+"%"], ["支出", fmt(m.spend)], ["收入", fmt(m.income)],
+    ["弃权率", (m.abstention_rate*100).toFixed(0)+"%"], ["计划遵循", (m.plan_adherence*100).toFixed(0)+"%"],
+    ["任务完成", (m.task_completion_rate*100).toFixed(0)+"%"], ["token/任务", m.token_efficiency],
+    ["修vs买", m.repair_vs_rebuy],
+  ].map(([k,v]) => `<div class="kpi"><div class="v">${v}</div><div class="k">${k}</div></div>`).join("");
+  // 任务
+  document.querySelector("#tasks tbody").innerHTML = st.tasks.map(t =>
+    `<tr><td>${t.id.slice(0,8)}</td><td>${t.title}</td><td class="num">${t.bounty}</td><td>${t.status}</td></tr>`).join("")
+    || "<tr><td colspan=4 class=dim>暂无任务</td></tr>";
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+}
+
+async function refreshLicense() {
+  const l = await (await fetch("/api/license")).json();
+  const ent = l.tier === "enterprise";
+  document.getElementById("tier-badge").innerHTML =
+    ent ? `<span class="tag completed">企业版 · ${l.org} · ${l.seats} 席位 · ${l.days_left} 天</span>`
+        : `<span class="tag warn">社区版 · MIT 永久免费</span>`;
+  const rows = Object.entries(l.features).map(([k, v]) =>
+    `<div class="ev"><span class="tag ${v.enabled ? "completed" : "decline"}">${v.enabled ? "已启用" : "需企业许可"}</span>
+     <span><b>${k}</b> — ${v.description}</span></div>`).join("");
+  document.getElementById("license").innerHTML =
+    `<div class="pill" style="margin-bottom:8px">
+       开源核心（Agent、复式账本、任务板、市场、技能、记忆、仪表盘、实验框架）永久免费；
+       企业付费的是闭源扩展（SSO / RBAC / 审计导出 / 多租户）与服务 —— 详见 docs/LICENSING.md
+     </div>` + rows;
+}
+
+async function send() {
+  const inp = document.getElementById("msg");
+  const text = inp.value.trim(); if (!text) return; inp.value = "";
+  const r = await (await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({message: text})})).json();
+  document.getElementById("reply").textContent = r.reply || r.error || "";
+  refresh();
+}
+async function postTask() {
+  await fetch("/api/task", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({title: document.getElementById("t-title").value || "adhoc",
+      brief: "", bounty: parseInt(document.getElementById("t-bounty").value || "10")})});
+  refresh();
+}
+async function runExperiment() {
+  const out = document.getElementById("exp-out");
+  out.textContent = "运行中…（每个单元使用隔离工作区 + 确定性策略驱动）";
+  const budgets = document.getElementById("exp-budgets").value.split(",").map(s => parseInt(s.trim())).filter(Boolean);
+  const runs = parseInt(document.getElementById("exp-runs").value || "2");
+  const r = await (await fetch("/api/experiment", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({budgets, runs_per_cell: runs})})).json;
+  out.textContent = JSON.stringify({
+    预算敏感度斜率: r.budget_sensitivity, 预算焦虑指数: r.budget_anxiety_index,
+    各单元: r.cells.map(c => `预算${c.budget}${JSON.stringify(c.signal)}: 收入${c.avg_income} 支出${c.avg_spend} 储蓄率${(c.avg_metrics.savings_rate*100).toFixed(0)}% 弃权率${(c.avg_metrics.abstention_rate*100).toFixed(0)}%`),
+  }, null, 2);
+}
+refresh(); refreshLicense(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>
